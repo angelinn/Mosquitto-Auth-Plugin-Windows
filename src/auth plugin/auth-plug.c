@@ -297,7 +297,7 @@ int mosquitto_auth_unpwd_check(void *userdata, const char *username, const char 
 			/* Mark backend index in userdata so we can check
 			 * authorization in this back-end only.
 			 */
-			// break;
+			 // break;
 		}
 	}
 
@@ -378,55 +378,52 @@ int mosquitto_auth_acl_check(void *userdata, const char *clientid, const char *u
 		}
 	}
 
-	for (bep = ud->be_list; bep && *bep; bep++) {
-		struct backend_p *b = *bep;
+	struct backend_p *b = *ud->be_list;
+	bep = ud->be_list;
 
-		match = b->superuser(b->conf, username);
-		if (match == BACKEND_ALLOW) {
-			_log(LOG_DEBUG, "aclcheck(%s, %s, %d) SUPERUSER=Y by %s",
-				username, topic, access, b->name);
-			granted = MOSQ_ERR_SUCCESS;
-			goto outout;
-		}
-		else if (match == BACKEND_DENY) {
-			_log(LOG_DEBUG, "aclcheck(%s, %s, %d) SUPERUSER=N by %s",
-				username, topic, access, b->name);
-			granted = MOSQ_DENY_ACL;
-			goto outout;
-		}
-		else if (match == BACKEND_ERROR) {
-			_log(LOG_DEBUG, "aclcheck(%s, %s, %d) HAS_ERROR=Y by %s",
-				username, topic, access, b->name);
-			has_error = TRUE;
-		}
+	match = b->superuser(b->conf, username);
+	if (match == BACKEND_ALLOW) {
+		_log(LOG_DEBUG, "aclcheck(%s, %s, %d) SUPERUSER=Y by %s",
+			username, topic, access, b->name);
+		granted = MOSQ_ERR_SUCCESS;
+		goto outout;
 	}
+	else if (match == BACKEND_DENY) {
+		_log(LOG_DEBUG, "aclcheck(%s, %s, %d) SUPERUSER=N by %s",
+			username, topic, access, b->name);
+		granted = MOSQ_DENY_ACL;
+		goto outout;
+	}
+	else if (match == BACKEND_ERROR) {
+		_log(LOG_DEBUG, "aclcheck(%s, %s, %d) HAS_ERROR=Y by %s",
+			username, topic, access, b->name);
+		has_error = TRUE;
+	}
+
 
 	/*
 	 * Check authorization in the back-end used to authenticate the user.
 	 */
 
-	for (bep = ud->be_list; bep && *bep; bep++) {
-		struct backend_p *b = *bep;
-
-		match = b->aclcheck((*bep)->conf, clientid, username, topic, access);
-		if (match == BACKEND_ALLOW) {
-			backend_name = b->name;
-			_log(LOG_DEBUG, "aclcheck(%s, %s, %d) trying to acl with %s",
-				username, topic, access, b->name);
-			authorized = TRUE;
-			break;
-		}
-		else if (match == BACKEND_DENY) {
-			backend_name = b->name;
-			authorized = FALSE;
-			break;
-		}
-		else if (match == BACKEND_ERROR) {
-			_log(LOG_DEBUG, "aclcheck(%s, %s, %d) HAS_ERROR=Y by %s",
-				username, topic, access, b->name);
-			has_error = TRUE;
-		}
+	b = *ud->be_list;
+	bep = ud->be_list;
+	match = b->aclcheck((*bep)->conf, clientid, username, topic, access);
+	if (match == BACKEND_ALLOW) {
+		backend_name = b->name;
+		_log(LOG_DEBUG, "aclcheck(%s, %s, %d) trying to acl with %s",
+			username, topic, access, b->name);
+		authorized = TRUE;
 	}
+	else if (match == BACKEND_DENY) {
+		backend_name = b->name;
+		authorized = FALSE;
+	}
+	else if (match == BACKEND_ERROR) {
+		_log(LOG_DEBUG, "aclcheck(%s, %s, %d) HAS_ERROR=Y by %s",
+			username, topic, access, b->name);
+		has_error = TRUE;
+	}
+
 
 	_log(LOG_DEBUG, "aclcheck(%s, %s, %d) AUTHORIZED=%d by %s",
 		username, topic, access, authorized, (backend_name) ? backend_name : "none");
